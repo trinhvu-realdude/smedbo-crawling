@@ -11,9 +11,14 @@ import org.jsoup.select.Elements;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class BathroomSeriesService {
 
+    private static final Logger LOGGER = Logger.getLogger(BathroomSeriesService.class.getName());
+
+    private static final JsonFileService json = JsonFileService.getInstance();
 
     /**
      * function getAllBathroomSeries()
@@ -25,6 +30,7 @@ public class BathroomSeriesService {
 
         try {
             Document html = Jsoup.connect(Constants.BASE_URL + "/bathroom-series/").get();
+            LOGGER.log(Level.WARNING, "Fetching " + Constants.BASE_URL + "/bathroom-series/");
 
             Elements bathroomSeriesList = html.getElementsByClass("cta-3x33");
 
@@ -51,27 +57,14 @@ public class BathroomSeriesService {
                     result.add(bathroomSeries);
                 }
             }
-        } catch (IOException e) {
-            System.err.println("Error: " + e);
+
+            LOGGER.log(Level.INFO, "Bathroom Series: " + json.generateDataToJson(result));
+
+            json.sleep();
+        } catch (IOException | InterruptedException e) {
+            LOGGER.log(Level.SEVERE, "Error: " + e);
         }
 
         return result;
-    }
-
-
-    /**
-     * function getBathroomSeriesByTitle()
-     *
-     * @param title
-     * @return a bathroom series
-     */
-    public BathroomSeries getBathroomSeriesByTitle(String title) {
-        List<BathroomSeries> bathroomSeriesList = getAllBathroomSeries();
-
-        for (BathroomSeries bathroomSeries : bathroomSeriesList) {
-            if (bathroomSeries.getTitle().equals(title)) return bathroomSeries;
-        }
-
-        return null;
     }
 }

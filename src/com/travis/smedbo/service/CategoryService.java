@@ -11,9 +11,14 @@ import org.jsoup.select.Elements;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class CategoryService {
 
+    private static final Logger LOGGER = Logger.getLogger(CategoryService.class.getName());
+
+    private static final JsonFileService json = JsonFileService.getInstance();
 
     /**
      * function getAllCategories()
@@ -25,6 +30,7 @@ public class CategoryService {
 
         try {
             Document html = Jsoup.connect(Constants.BASE_URL + "/assortment/").get();
+            LOGGER.log(Level.WARNING, "Fetching " + Constants.BASE_URL + "/assortment/");
 
             Elements categoryList = html.getElementsByClass("cta-4x25");
 
@@ -51,8 +57,12 @@ public class CategoryService {
                     }
                 }
             }
-        } catch (IOException e) {
-            System.err.println("Error: " + e);
+
+            LOGGER.log(Level.INFO, "Categories: " + json.generateDataToJson(result));
+
+            json.sleep();
+        } catch (IOException | InterruptedException e) {
+            LOGGER.log(Level.SEVERE, "Error: " + e);
         }
 
         return result;
