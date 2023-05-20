@@ -1,8 +1,8 @@
-package com.travis.smedbo.services;
+package com.travis.smedbo.service;
 
-import com.travis.smedbo.constants.Constants;
-import com.travis.smedbo.models.BathroomSeries;
-import com.travis.smedbo.models.Image;
+import com.travis.smedbo.constant.Constants;
+import com.travis.smedbo.model.BathroomSeries;
+import com.travis.smedbo.model.Image;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -56,5 +56,22 @@ public class BathroomSeriesService {
         }
 
         return result;
+    }
+
+
+    /**
+     * function getBathroomSeriesByTitle()
+     *
+     * @param title
+     * @return a bathroom series
+     */
+    public BathroomSeries getBathroomSeriesByTitle(String title) {
+        List<BathroomSeries> bathroomSeriesList = getAllBathroomSeries();
+
+        for (BathroomSeries bathroomSeries : bathroomSeriesList) {
+            if (bathroomSeries.getTitle().equals(title)) return bathroomSeries;
+        }
+
+        return null;
     }
 }

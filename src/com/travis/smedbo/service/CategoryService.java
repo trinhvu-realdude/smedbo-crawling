@@ -1,8 +1,8 @@
-package com.travis.smedbo.services;
+package com.travis.smedbo.service;
 
-import com.travis.smedbo.constants.Constants;
-import com.travis.smedbo.models.Category;
-import com.travis.smedbo.models.Image;
+import com.travis.smedbo.constant.Constants;
+import com.travis.smedbo.model.Category;
+import com.travis.smedbo.model.Image;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
