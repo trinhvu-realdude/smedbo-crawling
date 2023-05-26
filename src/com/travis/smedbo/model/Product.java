@@ -8,7 +8,7 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 public class Product {
-    private String itemNumber;
+    private String sku;
     private String title;
     private String price;
     private String url;
@@ -17,5 +17,7 @@ public class Product {
     private List<Image> images;
     private List<BathroomSeries> bathroomSeries;
     private AdditionalInformation additionalInformation;
+    private String installation;
+    private String highResolutionImage;
     private Category category;
 }

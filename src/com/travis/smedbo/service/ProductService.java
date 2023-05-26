@@ -9,9 +9,12 @@ import org.jsoup.select.Elements;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 public class ProductService {
 
@@ -43,13 +46,8 @@ public class ProductService {
 
             // check total of products if it is more than 12, will check pagination to get more products
             if (numberOfProducts > 12) {
-                if (numberOfProducts % 12 == 0) {
-                    int finalPage = numberOfProducts / 12;
-                    getProductListByPage(result, finalPage, categoryUrl, category, bathroomSeriesList);
-                } else {
-                    int finalPage = (int) Math.ceil((double) numberOfProducts / 12);
-                    getProductListByPage(result, finalPage, categoryUrl, category, bathroomSeriesList);
-                }
+                int finalPage = numberOfProducts % 12 == 0 ? numberOfProducts / 12 : (int) Math.ceil((double) numberOfProducts / 12);
+                getProductListByPage(result, finalPage, categoryUrl, category, bathroomSeriesList);
             }
 
             json.sleep();
@@ -104,29 +102,27 @@ public class ProductService {
 
             String title = html.getElementsByClass("product_title").text().trim();
             String price = html.getElementsByClass("price").text().trim();
-            String description = html.getElementsByClass("woocommerce-product-details__short-description").size() > 0
-                    ? html.getElementsByClass("woocommerce-product-details__short-description").get(0).text().replace("Description", "").trim()
-                    : null;
+            String description = html.getElementsByClass("woocommerce-product-details__short-description")
+                    .stream()
+                    .findFirst()
+                    .map(element -> element.text().replace("Description", "").trim())
+                    .orElse(null);
 
-            List<Image> images = new ArrayList<>();
-            Elements imageList = html.getElementsByClass("woocommerce-product-gallery__image");
-
-            for (Element elementImage : imageList) {
-                String imageUrl = elementImage.getElementsByTag("a").attr("href");
-                if (!imageUrl.equals("")) {
-                    images.add(new Image(imageUrl));
-                }
-            }
+            List<Image> images = html.getElementsByClass("woocommerce-product-gallery__image")
+                    .stream()
+                    .map(element -> new Image(element.getElementsByTag("a").attr("href")))
+                    .filter(imageUrl -> !imageUrl.getUrl().isEmpty())
+                    .collect(Collectors.toList());
 
             Element infoContainer = html.getElementsByClass("product_meta__list").get(0);
-            String itemNumber = "";
+            String sku = "";
             List<BathroomSeries> bathroomSeries = new ArrayList<>();
             List<String> surfaceColors = new ArrayList<>();
 
             for (int i = 0; i < infoContainer.childrenSize(); i++) {
                 // item number
                 if (i == 0) {
-                    itemNumber = infoContainer.child(i).getElementsByClass("product_meta__value").text().trim();
+                    sku = infoContainer.child(i).getElementsByClass("product_meta__value").text().trim();
                 }
 
                 // bathroom series
@@ -152,31 +148,57 @@ public class ProductService {
             Element additionalInformationContainer = html.getElementsByTag("table").size() > 0
                     ? html.getElementsByTag("table").get(0).child(0)
                     : null;
-            AdditionalInformation additionalInformation = new AdditionalInformation();
+            Map<String, String> attributes = new HashMap<>();
+            Map<String, String> sketchSizes = new HashMap<>();
+            String imageUrl = "";
             if (additionalInformationContainer != null) {
-                String otherInfo = additionalInformationContainer.getElementsByTag("p").text().trim();
-                List<String> sketchSizes = new ArrayList<>();
-                String imageUrl = html.getElementsByClass("single-product-additional-information-tab__sketch").get(0).childrenSize() > 0
-                        ? html.getElementsByClass("single-product-additional-information-tab__sketch").get(0).child(0).attr("src")
-                        : null;
-                Image image = imageUrl == null ? null : new Image(imageUrl);
-                Element sketchSizesList = additionalInformationContainer.getElementsByClass("product-attributes__sub-list").size() > 0
-                        ? additionalInformationContainer.getElementsByClass("product-attributes__sub-list").get(0)
-                        : null;
+                if (!additionalInformationContainer.child(0).className().split("--")[1].equals("sketch_sizes")) {
+                    String keyAttributes = additionalInformationContainer.child(0).getElementsByTag("th").text().trim();
+                    String valueAttributes = additionalInformationContainer.child(0).getElementsByTag("td").text().trim();
+                    attributes.put(keyAttributes, valueAttributes);
+                }
+
+                Element sketchSizesList = additionalInformationContainer.getElementsByClass("product-attributes__sub-list")
+                        .stream()
+                        .findFirst()
+                        .orElse(null);
 
                 if (sketchSizesList != null) {
-                    for (int i = 0; i < sketchSizesList.childrenSize(); i++) {
-                        String sketchSizesItem = sketchSizesList.child(i).getElementsByTag("span").text().trim();
-                        sketchSizes.add(sketchSizesItem);
-                    }
+                    sketchSizesList.children().forEach(element -> {
+                        String sketchSizesOption = element.getElementsByTag("strong").text().replace(":", "").trim();
+                        String sketchSizesItem = element.getElementsByTag("span").text().trim();
+                        sketchSizes.put(sketchSizesOption, sketchSizesItem);
+                    });
                 }
-                additionalInformation.setOtherInfo(otherInfo.equals("") ? null : otherInfo);
-                additionalInformation.setSketchSizes(sketchSizes.size() > 0 ? sketchSizes : null);
-                additionalInformation.setImage(image);
+
+                imageUrl = html.getElementsByClass("single-product-additional-information-tab__sketch")
+                        .stream()
+                        .findFirst()
+                        .flatMap(element -> element.children().stream().findFirst())
+                        .map(element -> element.attr("src"))
+                        .orElse(null);
             }
 
+            AdditionalInformation additionalInformation = AdditionalInformation.builder()
+                    .attributes(attributes.size() > 0 ? attributes : null)
+                    .sketchSizes(sketchSizes.size() > 0 ? sketchSizes : null)
+                    .thumbnail(imageUrl == null || imageUrl.equals("") ? null : new Image(imageUrl))
+                    .build();
+
+            String installation = html.getElementsByClass("installation_tab")
+                    .stream()
+                    .findFirst()
+                    .map(element -> element.getElementsByTag("a").attr("href"))
+                    .orElse(null);
+
+            String highResolutionImage = html.getElementsByClass("images_tab")
+                    .stream()
+                    .findFirst()
+                    .map(element -> element.getElementsByTag("a").attr("href"))
+                    .orElse(null);
+
             result = Product.builder()
-                    .itemNumber(itemNumber)
+                    .sku(sku)
                     .title(title)
                     .price(price.equals("") ? null : price)
                     .url(url)
@@ -185,6 +207,8 @@ public class ProductService {
                     .images(images)
                     .bathroomSeries(bathroomSeries)
                     .additionalInformation(additionalInformationContainer != null ? additionalInformation : null)
+                    .installation(installation == null || installation.equals("") ? null : installation)
+                    .highResolutionImage(highResolutionImage == null || highResolutionImage.equals("") ? null : highResolutionImage)
                     .category(category)
                     .build();
 
